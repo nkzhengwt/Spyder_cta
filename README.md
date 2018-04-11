@@ -1,7 +1,8 @@
 # spyder_cta
 Spyder_cta is a trading python library.
 # Getting Started
-将tradeDateList.h5存储在主路径下，是唯一必要的初始数据存储文件
+将tradeDateList.h5存储在主路径下(唯一必要的初始数据存储文件)
+
 将main.py,get_oir2.py, get_oir.py, asset_curve.py, indicator17.py存储在主路径下
 # Initialization
 ```
