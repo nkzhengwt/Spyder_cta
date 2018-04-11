@@ -175,7 +175,7 @@ class Indicators():
                 self.annual_return('asset'+ str(k),items),
                 self.max_draw('asset'+ str(k),items),
                 self.volatility('asset'+ str(k),items),
-                self.sharp('asset'+ str(k),0.4,items),
+                self.sharp('asset'+ str(k),0,items),
                 self.calmar('asset'+ str(k),items),
                 self.daily_win_ratio('asset'+ str(k),items),
                 self.win_lose_ratio('asset'+ str(k),items),
