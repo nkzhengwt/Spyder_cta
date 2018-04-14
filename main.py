@@ -22,7 +22,7 @@ if __name__=='__main__':
     # 设置合约乘数
     multiplier = 300
     # 设置起始日期
-    updatebegin = 20100101
+    updatebegin = 20120101
     endDate = 20180408
     # 设置合约品种
     windSymbol = 'IF.CFE'
