@@ -103,10 +103,10 @@ class oir(object):
 #                        print(date)
                         if data.empty:
                             print('new')
-                        data = getFutureoirByDate(date,date,windSymbol,position)
-                    else:
-                        temdata = getFutureoirByDate(date,date,windSymbol,position)
-                        data = pd.concat([data,temdata])
+                            data = getFutureoirByDate(date,date,windSymbol,position)
+                        else:
+                            temdata = getFutureoirByDate(date,date,windSymbol,position)
+                            data = pd.concat([data,temdata])
                     data['updatingTime'] = t.strftime('%Y-%m-%d %H:%M:%S')
                     data = pd.concat([lastData,data])
                 except:
