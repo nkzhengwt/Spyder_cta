@@ -12,8 +12,8 @@ import pandas as pd
 import numpy as np
 import os
 import warnings
-import datetime
-import h5py
+#import datetime
+#import h5py
 from WindPy import *
 w.start()
 warnings.filterwarnings("ignore")
@@ -60,7 +60,7 @@ class oir(object):
 #                print(dataout.head())
             except:
 #                print(data)
-                print(windSymbol + "cannot get data on " + date + ' !')
+                print(windSymbol + " cannot get data on " + date + ' !')
                 return pd.DataFrame([])
             dataout['tradeDate'] = dataout['tradeDate'].astype(str)
             dataout['tradeDate'] = pd.to_datetime(dataout['tradeDate'], format='%Y-%m-%d',errors='ignore')
@@ -107,8 +107,10 @@ class oir(object):
                         else:
                             temdata = getFutureoirByDate(date,date,windSymbol,position)
                             data = pd.concat([data,temdata])
+                            data = data.reset_index(drop=True)
                     data['updatingTime'] = t.strftime('%Y-%m-%d %H:%M:%S')
                     data = pd.concat([lastData,data])
+                    data = data.reset_index(drop=True)
                 except:
                     status = 1
 #                f.close()
@@ -131,6 +133,7 @@ class oir(object):
                     else:
                         temdata = getFutureoirByDate(date,date,windSymbol,position)
                         data = pd.concat([data,temdata])
+                        data = data.reset_index(drop=True)
                     data['updatingTime'] = t.strftime('%Y-%m-%d %H:%M:%S')
             data = data[colNamesFinal]
 #            print(data.head())
