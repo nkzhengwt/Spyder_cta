@@ -9,8 +9,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 class Indicators():
-    def __init__(self, path, params = []):
-        dataframe = pd.read_csv(path,parse_dates=True)
+    def __init__(self, dataframe, params = []):
         self.dataframe = dataframe
         self.params = params
 
