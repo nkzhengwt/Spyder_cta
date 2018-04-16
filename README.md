@@ -29,7 +29,9 @@ windSymbol = 'IF.CFE'
 ![](https://github.com/nkuzhengwt/Spyder_cta/blob/master/process2.png)
 # Result
 20180416更新
-！[](https://github.com/nkuzhengwt/Spyder_cta/blob/master/process.png)
+
+![](https://github.com/nkuzhengwt/Spyder_cta/blob/master/result.png)
+
 详细回测指标见：write_indicators.csv
 交易记录见：total.csv
 # Main Features
