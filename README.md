@@ -25,9 +25,13 @@ endDate = 20180408
 windSymbol = 'IF.CFE'
 ```
 # Process
-
+![](https://github.com/nkuzhengwt/Spyder_cta/blob/master/process.png)
+![](https://github.com/nkuzhengwt/Spyder_cta/blob/master/process2.png)
 # Result
-由于wind数据超限，暂时无法提供结果，等数据权限开通后更新
+20180416更新
+！[](https://github.com/nkuzhengwt/Spyder_cta/blob/master/process.png)
+详细回测指标见：write_indicators.csv
+交易记录见：total.csv
 # Main Features
 ## 综合
 - 事件驱动 √
