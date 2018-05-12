@@ -13,7 +13,7 @@ pip install datetime
 pip install time
 pip install matplotlib
 ```
-Also you need to install Wind to get the quote and signal data from it.
+Also you need to install Wind to get the quote and signal data from it and get WindPy ready to work.
 # Getting Started
 1. 将tradeDateList.h5存储在主路径下(唯一必要的初始数据存储文件)
 
