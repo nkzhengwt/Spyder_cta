@@ -21,6 +21,7 @@ Also you need to install Wind to get the quote and signal data from it and get W
 3. 初始化参数
 4. 运行main.py
 # Initialization
+You can initialize spyder_cta in main.py.
 ```
 #设置主路径
 homePath = 'E:\\test2'
