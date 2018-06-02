@@ -21,7 +21,7 @@ class Indicators():
         self.dataframe['time'] = dataframe['tradeDate']
         self.dataframe['cumulative_return'] = self.dataframe['open']
         self.dataframe['cumulative_return'] = self.dataframe['cumulative_return']/self.dataframe.loc[0,'open']
-        self.dataframe['cumulative_return'] = dataframe['cumulative_return']*1000000
+        self.dataframe['cumulative_return'] = dataframe['cumulative_return']#*1000000
         self.dataframe.index = pd.to_datetime(dataframe['tradeDate'])#!!!!!
         #分年计算
         self.year_slice = {}
@@ -32,8 +32,8 @@ class Indicators():
                 self.year_slice[str(y)] = dataframe[i:j-1]
                 y = time.strptime(self.dataframe['time'].iat[j],"%Y-%m-%d").tm_year
                 i = j
-        self.year_slice[str(y)] = dataframe[i:]      
-        
+        self.year_slice[str(y)] = dataframe[i:]
+
 
 ###年化收益
     def annual_return(self,asset,year):
@@ -44,8 +44,8 @@ class Indicators():
         d2 = datetime.datetime(t1.tm_year, t2.tm_mon, t2.tm_mday)
         n = (d2-d1).days
         n = n/244
-        print('The annual return for %s in %s is %f' %(asset,year,math.pow(R, 1/n)-1))
-        return math.pow(R, 1/n)-1 
+#        print('The annual return for %s in %s is %f' %(asset,year,math.pow(R, 1/n)-1))
+        return math.pow(R, 1/n)-1
 
 ###最大回撤
     def max_draw(self,asset,year):
@@ -55,8 +55,8 @@ class Indicators():
             if self.year_slice[year].ix[i, asset] > self.year_slice[year].ix[i-1, 'max']:
                 self.year_slice[year].ix[i, 'max'] = self.year_slice[year].ix[i, asset]
             else:
-                self.year_slice[year].ix[i, 'max'] = self.year_slice[year].ix[i-1, 'max']   
-        self.year_slice[year]['retreat']=(self.year_slice[year][asset]- self.year_slice[year]['max'])/self.year_slice[year]['max']      
+                self.year_slice[year].ix[i, 'max'] = self.year_slice[year].ix[i-1, 'max']
+        self.year_slice[year]['retreat']=(self.year_slice[year][asset]- self.year_slice[year]['max'])/self.year_slice[year]['max']
         print('The max draw for %s in %s is %f' %(asset,year,abs(min(self.year_slice[year]['retreat']))))
         return abs(min(self.year_slice[year]['retreat']))
 
@@ -90,7 +90,7 @@ class Indicators():
         self.year_slice[year]['dif'] = self.year_slice[year][asset] - self.year_slice[year][asset].shift(1)
         print('The win lose ratio for %s in %s is %f' %(asset,year,abs(min(self.year_slice[year]['retreat']))))
         return abs(sum(self.year_slice[year][self.year_slice[year]['dif']>0]['dif']))/abs(sum(self.year_slice[year][self.year_slice[year]['dif']<0]['dif']))
-        
+
 ###大回撤区间
     def worst_draw_interval(self,asset,year):
         self.year_slice[year]['max'] = 0
@@ -98,13 +98,13 @@ class Indicators():
         self.year_slice[year]['max_time'] = self.year_slice[year]['time']
         for i in range(1, len(self.year_slice[year][asset])):
             if self.year_slice[year].ix[i, asset] > self.year_slice[year].ix[i-1, 'max']:
-                self.year_slice[year].ix[i, 'max'] = self.year_slice[year].ix[i, asset]     
+                self.year_slice[year].ix[i, 'max'] = self.year_slice[year].ix[i, asset]
             else:
                 self.year_slice[year].ix[i, 'max'] = self.year_slice[year].ix[i-1, 'max']
-                self.year_slice[year].ix[i, 'max_time'] = self.year_slice[year].ix[i-1, 'max_time']   
+                self.year_slice[year].ix[i, 'max_time'] = self.year_slice[year].ix[i-1, 'max_time']
         self.year_slice[year]['retreat']=(self.year_slice[year][asset]- self.year_slice[year]['max'])/self.year_slice[year]['max']
         max_draw = min(self.year_slice[year]['retreat'])
-          
+
         data = self.year_slice[year][self.year_slice[year]['retreat'] == max_draw]
         t1 = data['tradeDate']#
         t2 = data['max_time']
@@ -141,7 +141,7 @@ class Indicators():
         print('The minor average return for %s in %s is %f' %(asset,year,sum_pos/num))
         return sum_pos/num
 
-    def write_indicators_concat(self,path):  
+    def write_indicators_concat(self,path):
         frames = []
         for items in self.year_slice:
             temp_data = []
@@ -160,9 +160,9 @@ class Indicators():
                 self.average_daily_position('asset'+ str(k),items),
                 self.minor_average_return('asset'+ str(k),items)]
                 temp_data.append(x)
-                temp_index.append('asset'+ str(k))    
+                temp_index.append('asset'+ str(k))
             DataFrame = pd.DataFrame(temp_data,index=temp_index,columns=['year','annual_return', 'max_draw', 'volatility', 'sharp','calmar','daily_win_ratio','win_lose_ratio','total_turnover','average_daily_turnover','average_daily_position','minor_average_return'])
-            frames.append(DataFrame)   
+            frames.append(DataFrame)
         DataFrame = pd.concat(frames)
         DataFrame.to_csv(path_or_buf=path)
 
@@ -174,21 +174,21 @@ class Indicators():
         plt.figure()
         plt.subplots_adjust(hspace=1, wspace=1)
 
-        plt.subplot(3,1,1)
+        plt.subplot(1,1,1)
         self.dataframe['asset'+ str(asset_num)].plot(legend = True)
         self.dataframe['cumulative_return'].plot(x=None, y=None, kind='line', ax=None, subplots=False, sharex=None, sharey=False, layout=None, figsize=None, use_index=True, title=None, grid=None, legend=True, style=None, logx=False, logy=False, loglog=False, xticks=None, yticks=None, xlim=None, ylim=None, rot=None, fontsize=None, colormap=None, table=False, yerr=None, xerr=None, secondary_y=False, sort_columns=False)
-        
-        plt.subplot(3,1,2)
-        f2 = plt.bar(range(len(self.dataframe['transaction'+ str(asset_num)])), self.dataframe['transaction'+ str(asset_num)].tolist(),tick_label= None,label='transaction'+ str(asset_num))
-        plt.legend((f2,),('transaction'+ str(asset_num),))
 
-        plt.subplot(3,1,3)
-        f3 = plt.bar(range(len(self.dataframe['pnl'+ str(asset_num)])),self.dataframe['pnl'+ str(asset_num)].tolist(),label='pnl'+ str(asset_num))
-        plt.legend((f3,),('pnl'+ str(asset_num),))
+#        plt.subplot(3,1,2)
+#        f2 = plt.bar(range(len(self.dataframe['transaction'+ str(asset_num)])), self.dataframe['transaction'+ str(asset_num)].tolist(),tick_label= None,label='transaction'+ str(asset_num))
+#        plt.legend((f2,),('transaction'+ str(asset_num),))
+#
+#        plt.subplot(3,1,3)
+#        f3 = plt.bar(range(len(self.dataframe['pnl'+ str(asset_num)])),self.dataframe['pnl'+ str(asset_num)].tolist(),label='pnl'+ str(asset_num))
+#        plt.legend((f3,),('pnl'+ str(asset_num),))
 
         plt.show()
 
 if __name__=='__main__':
     indicators = Indicators('/Users/zhubaobao/Documents/Quant/ZXJT/total3.csv', [5,10,20])
     #indicators.write_indicators_concat('/Users/zhubaobao/Documents/Quant/ZXJT/write_indicators.csv')
-    indicators.plot_figure(10)    
+    indicators.plot_figure(10)
