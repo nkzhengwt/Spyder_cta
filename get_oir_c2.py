@@ -5,7 +5,7 @@ Created on Sun Apr 22 16:26:42 2018
 
 @author: weiss
 
-4.22 
+4.22
 1.增加了近月函数this_contract()
 2.调整了部分语法结构适应合约key
 3.调整了部分逻辑冗余
@@ -26,6 +26,13 @@ Created on Sun Apr 22 16:26:42 2018
 1.修正合并数据部分的代码误删和错误
 2.精简和优化部分代码结构
 
+5.11-5.12
+1.增加contract_indic选项(None、'this'、'this&next')，丰富相关逻辑
+2.优化代码逻辑结构
+
+5.18
+1.增加中金所爬虫函数以及对应信号函数
+
 """
 
 
@@ -35,9 +42,17 @@ import pandas as pd
 import numpy as np
 import os
 import warnings
-from WindPy import *
-w.start()
 warnings.filterwarnings("ignore")
+try:
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError
+except ImportError:
+    from urllib2 import urlopen, Request
+    from urllib2 import HTTPError
+import xml.etree.ElementTree as ET
+#from WindPy import *
+#w.start()
+
 
 class oir(object):
 
@@ -57,11 +72,11 @@ class oir(object):
         #确定所需更新的日期
         if endDate < self.workDate:
             self.workDate = endDate
-    
+
     def this_contract(self,windSymbol):
         symbol = windSymbol.split('.')[0]
         def change_spot(y_month):
-            weekday = datetime.strptime(y_month+'-01', "%Y-%m-%d").weekday()
+            weekday = datetime.datetime.strptime(y_month+'-01', "%Y-%m-%d").weekday()
             if weekday <= 5:
                 return (14 + 5 - weekday)
             else:
@@ -80,7 +95,19 @@ class oir(object):
          self.tradeDateList['tradeDate'].apply(lambda x : symbol+this_month(x))
         self.tradeDateList.to_csv(self.homePath +'tradeDateList.csv', index=None)
 
-    def updateDataFromWind(self,windSymbol):
+    def next_contract(self,windSymbol):
+        symbol = windSymbol.split('.')[0]
+        def _next(contract):
+            month = np.int32(contract[-2:])
+            if month%3 == 0:
+                return '0'
+            else:
+                return contract[:-2]+"%02d"%(month+(3-month%3))
+        self.tradeDateList[symbol+'_next'] = \
+         self.tradeDateList[symbol+'_contract'].apply(lambda x : _next(x))
+        self.tradeDateList.to_csv(self.homePath +'tradeDateList.csv', index=None)
+
+    def updateDataFromWind(self,windSymbol,contract_indic=None):
         symbol = windSymbol.split('.')[0]
         colNames = ['tradeDate','ranks','member_name','long_position',
                     'long_position_increase','short_position',
@@ -96,9 +123,14 @@ class oir(object):
 
         #获取合约数据的函数
         def getFutureoirByDate(beginDate,endDate,windSymbol,windCode,position):
-            data = w.wset("futureoir","startdate="+beginDate+";enddate="+
+            if windCode:
+                data = w.wset("futureoir","startdate="+beginDate+";enddate="+
                           endDate+";varity="+windSymbol+";wind_code=" +
                           windCode + ";order_by=" + position +
+                          ";ranks=all;field=date,ranks,member_name,long_position,long_position_increase,short_position,short_position_increase,vol")
+            else:
+                data = w.wset("futureoir","startdate="+beginDate+";enddate="+
+                          endDate+";varity="+windSymbol+ ";order_by=" + position +
                           ";ranks=all;field=date,ranks,member_name,long_position,long_position_increase,short_position,short_position_increase,vol")
             if len(data.Data) == 0:
                 return pd.DataFrame([])
@@ -121,8 +153,12 @@ class oir(object):
 
         dateList = pd.DataFrame()
         dateList['tradeDate'] =  self.tradeDateList['tradeDate'].astype(str)
-        dateList[symbol+'_contract'] = self.tradeDateList[symbol+'_contract']\
+        if contract_indic == 'this' or contract_indic == 'this&next':
+            self.this_contract(windSymbol)
+            dateList[symbol+'_contract'] = self.tradeDateList[symbol+'_contract']\
                        +'.'+ windSymbol.split('.')[1]
+        else:
+            dateList[symbol+'_contract'] = [None]*len(dateList)
 
         for position in ['long','short']:
             endDate = str(self.workDate)
@@ -155,7 +191,7 @@ class oir(object):
                 beginDate = str(self.beginDate)
                 print(windSymbol+ '_' +position+', begin:'+\
                       beginDate+' getting...')
-            
+
             tempDateList = dateList[dateList['tradeDate'] >= beginDate]
             tempDateList = tempDateList[tempDateList['tradeDate'] <=\
                             endDate].reset_index(drop=True)
@@ -183,7 +219,7 @@ class oir(object):
             if len(c)>2:
                 result[c[2][:-2]] = (df[c[2]]*(1+choise)+df[c[3]]*(1-choise))/2
             return result
-        
+
         #生成连续数据
         print('continous data merging...')
         long_p = pd.read_hdf(self.homePath + 'rank'+self.suffix, \
@@ -206,17 +242,104 @@ class oir(object):
         p_df = con_position[['volume_x','volume_y']]
         print('volume merging...')
         con_p['volume'] = x_or_y(p_df)
-        
+
         con_p['tradeDate'] = con_position['tradeDate']
         con_p['member_name'] = con_position['member_name']
         con_p['updatingTime'] =  t.strftime('%Y-%m-%d %H:%M:%S')
         con_p=con_p[colNamesCon]
-        con_p.to_hdf(self.homePath  + 'rank'+self.suffix,windSymbol)
+        con_p.to_hdf(self.homePath+'rank'+self.suffix,windSymbol)
+
+        if contract_indic == 'this&next':
+            self.next_contract(windSymbol)
+            dateList[symbol+'_next'] = self.tradeDateList[symbol+'_next']\
+                       +'.'+ windSymbol.split('.')[1]
+            for position in ['long','short']:
+                endDate = str(self.workDate)
+                #如果存在数据，从上次更新日之后更新
+                status = 0
+                data = pd.DataFrame()
+
+                if os.path.exists(self.homePath + 'rank' + self.suffix):
+                    try:
+                        lastData = pd.read_hdf(self.homePath + 'rank' \
+                            + self.suffix, position +'_'+ windSymbol+'_next')
+                        if len(lastData) == 0:
+                            continue
+                        lastDate = str(lastData['tradeDate'].iloc[-1])
+                        lastDate = lastDate[0:4] + lastDate[5:7] + lastDate[8:10]
+                        beginDate = dateList[dateList['tradeDate'] > lastDate]\
+                                ['tradeDate'].iloc[0]
+                        beginDate = str(beginDate)
+                        if beginDate > endDate:
+                            continue
+                        print(windSymbol+'_next'+ '_' +position+ ', begin:' +\
+                              beginDate +',end:' + endDate + ' updating...')
+                        data = lastData
+                    except:
+                        status = 1
+                #不存在
+                else:
+                    status = 1
+                if status == 1:
+                    beginDate = str(self.beginDate)
+                    print(windSymbol+'_next'+ '_' +position+', begin:'+\
+                          beginDate+' getting...')
+
+                tempDateList = dateList[dateList['tradeDate'] >= beginDate]
+                tempDateList = tempDateList[tempDateList['tradeDate'] <=\
+                                endDate].reset_index(drop=True)
+                for i in range(len(tempDateList)):
+                    date = tempDateList['tradeDate'][i]
+                    contract = tempDateList[symbol+'_next'][i]
+                    if len(contract)>6:
+                        print(date)
+                        if data.empty:
+                            data = getFutureoirByDate(date,date,windSymbol,\
+                                                  contract,position)
+                        else:
+                            temdata = getFutureoirByDate(date,date,windSymbol,\
+                                                 contract,position)
+                            data = pd.concat([data,temdata])
+                            data = data.reset_index(drop=True)
+                        data['updatingTime'] = t.strftime('%Y-%m-%d %H:%M:%S')
+                data = data[colNamesFinal]
+                data.to_hdf(self.homePath + 'rank'+self.suffix, position + '_' +\
+                        windSymbol+'_next')
+
+            #生成连续数据
+            print('continous data merging...')
+            long_p = pd.read_hdf(self.homePath + 'rank'+self.suffix, \
+                             'long_' + windSymbol+'_next')
+            short_p = pd.read_hdf(self.homePath + 'rank'+self.suffix, \
+                              'short_' + windSymbol+'_next')
+            con_position = pd.merge(long_p.drop(['ranks','updatingTime'],axis = 1)\
+                    .fillna(0),short_p.drop(['ranks','updatingTime'],\
+                    axis = 1).fillna(0),on=['member_name','tradeDate'],\
+                    how = 'outer').fillna(0)
+            con_position = con_position.sort_values(\
+                by=['tradeDate','long_position_x'],ascending = [True,False])
+            con_p = pd.DataFrame(data = [],\
+                    index = range(len(con_position)),columns = colNamesCon)
+            con_position = con_position.reset_index()
+            for z in ['long_position','short_position','net_position']:
+                print(z +'_next merging...')
+                p_df = con_position[[z+'_x',z+'_y',z+'_increase_x',z+'_increase_y']]
+                con_p[[z,z+'_increase']] = x_or_y(p_df)
+            p_df = con_position[['volume_x','volume_y']]
+            print('volume_next merging...')
+            con_p['volume'] = x_or_y(p_df)
+
+            con_p['tradeDate'] = con_position['tradeDate']
+            con_p['member_name'] = con_position['member_name']
+            con_p['updatingTime'] =  t.strftime('%Y-%m-%d %H:%M:%S')
+            con_p=con_p[colNamesCon]
+            con_p.to_hdf(self.homePath+'rank'+self.suffix,windSymbol+'_next')
+
         print (symbol + " futureoir source data update complete!")
         return
 
-    def getSignal(self,windSymbol):
-        con_position = pd.read_hdf(self.homePath + 'rank'+self.suffix,windSymbol)
+    def getSignal(self,windSymbol,contract_indic=None):
+        con_position = pd.read_hdf(self.homePath+'rank'+self.suffix,windSymbol)
         #强制默认参数为[5,10,20]，否则出错
         sum_position = pd.DataFrame(data = [],index = range(len(con_position)),\
                        columns = ['tradeDate']+['long_position_increase_5']+\
@@ -236,21 +359,129 @@ class oir(object):
                        con_position['short_position_increase'][i+len(self.params)-1-tem_i]
                 j = j + 1
         sum_position = sum_position.iloc[0:j]
+
+        if contract_indic == 'this&next':
+            con_position_next = pd.read_hdf(self.homePath+'rank'+self.suffix,windSymbol+'_next')
+            sum_position_next = pd.DataFrame(data = [],index = range(len(con_position_next)),\
+                       columns = ['tradeDate']+['long_position_increase_5']+\
+                       ['long_position_increase_10']+['long_position_increase_20']+\
+                       ['short_position_increase_5']+['short_position_increase_10']+\
+                       ['short_position_increase_20'])
+            #生成排名数据
+            j = 0
+            for i in range(len(con_position_next)):
+                if i == 0 or (con_position_next['tradeDate'][i] != \
+                              con_position_next['tradeDate'][i-1]):
+                    sum_position_next['tradeDate'][j] = con_position_next['tradeDate'][i]
+                    for tem_i in range(len(self.params)):
+                        sum_position_next['long_position_increase_'\
+                                          +str(self.params[tem_i])][j] = \
+                           con_position_next['long_position_increase']\
+                           [i+len(self.params)-1-tem_i]
+                        sum_position_next['short_position_increase_'\
+                                          +str(self.params[tem_i])][j] = \
+                           con_position_next['short_position_increase']\
+                           [i+len(self.params)-1-tem_i]
+                    j = j + 1
+            sum_position_next = sum_position_next.iloc[0:j]
+
+            sum_position = sum_position.merge(sum_position_next,on=['tradeDate'],how='outer')
+            for col in ['long_position_increase_5','long_position_increase_10',
+                        'long_position_increase_20','short_position_increase_5',
+                        'short_position_increase_10','short_position_increase_20']:
+                sum_position[col+'_y'].fillna(0,inplace=True)
+                sum_position[col] = sum_position[col+'_x']+sum_position[col+'_y']
+
         #signal
         signal = pd.DataFrame()
         signal['tradeDate'] = sum_position['tradeDate']
         for k in self.params:
+            signal['long' + str(k)] = sum_position['long_position_increase_'+str(k)]
+            signal['short' + str(k)] = sum_position['short_position_increase_'+str(k)]
             signal['signal' + str(k)] = (sum_position['long_position_increase_'+str(k)].\
                    apply(np.sign) - sum_position['short_position_increase_'+str(k)].\
                    apply(np.sign))//2
         print(windSymbol.split('.')[0] + ' signal complete !')
         return signal
-    
+
+    def get_rank_data(self,date,variety):
+        month = str(date)[0:6]
+        day = str(date)[6:]
+        SIM_HAEDERS = {'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'}
+        try:
+            xml1 = urlopen(Request('http://www.cffex.com.cn/sj/ccpm/'+month+'/'+day+'/'+variety+'.xml',
+                            headers=SIM_HAEDERS)).read().decode('utf-8', 'ignore')
+        except HTTPError as reason:
+            if reason.code != 404:
+                print(404)
+
+        root = ET.fromstring(xml1)
+
+        data_attr = ['instrumentid','tradingday','datatypeid','rank','shortname',
+                     'volume','varvolume','partyid','productid']
+        data_attr_old = ['instrumentId','tradingDay','dataTypeId','rank','shortname',
+                     'volume','varVolume','partyid','productid']
+        """
+        posi_attr = ['tradingday','instrumentid','volumeamt','varvolumeamt',
+                     'buyvolumeamt','buyvarvolumeamt','sellvolumeamt','sellvarvolumeamt',
+                     'productid','futurecompany']
+        """
+        data = []
+        for d in root.findall('data'):
+            temp = []
+            try:
+                for attr in data_attr:
+                    t = d.find(attr).text
+                    temp.append(t)
+                data.append(temp)
+                #print(temp)
+            except:
+                for attr in data_attr_old:
+                    t = d.find(attr).text
+                    temp.append(t)
+                data.append(temp)
+        vol = [0,0,0]
+        varvol = [0,0,0]
+        for x in data:
+            vol[int(x[2])] +=int(x[5])
+            varvol[int(x[2])] += int(x[6])
+        return(varvol[1],varvol[2])
+
+    def get_signal_cffex(self,windSymbol):
+        symbol = windSymbol.split('.')[0]
+        dateList = pd.DataFrame()
+        dateList['tradeDate'] =  self.tradeDateList['tradeDate'].astype(str)
+        tempDateList = dateList[dateList['tradeDate'] >= str(self.beginDate)]
+        tempDateList = tempDateList[tempDateList['tradeDate'] <=str(self.workDate)]\
+                       .reset_index(drop=True)
+        long_chg = []
+        short_chg = []
+        for date in tempDateList['tradeDate']:
+            print(date)
+            try:
+                long_tem, short_tem = self.get_rank_data(date,symbol)
+                long_chg.append(long_tem)
+                short_chg.append(short_tem)
+            except:
+                long_chg.append(0)
+                short_chg.append(0)
+        chg_df = pd.DataFrame({'tradeDate':tempDateList['tradeDate'],\
+                               'long':long_chg,'short':short_chg})
+        chg_df.to_csv(self.homePath+symbol+'_chg.csv',index = None)
+        signal = pd.DataFrame()
+        signal['tradeDate'] = chg_df['tradeDate']
+        signal['long'] = chg_df['long']
+        signal['short'] = chg_df['short']
+        signal['signal'] = ((chg_df['long'].apply(np.sign) - chg_df['short'].apply(np.sign))/2).apply(int)
+        return signal
+
+
 if __name__=='__main__':
-    homePath = '/Users/weiss/Downloads'
+    homePath = 'E:\\Intern\\zxjt\\test9'
     windSymbol = 'IF.CFE'
-    IF = oir(homePath,updatebegin = 20170101,endDate = 20180328)
-    IF.this_contract(windSymbol)
-    IF.updateDataFromWind(windSymbol)
-    sig = IF.getSignal(windSymbol)
+    IF = oir(homePath,updatebegin = 20170101,endDate = 20170202)
+    #IF.updateDataFromWind(windSymbol,contract_indic='this&next')
+    #sig = IF.getSignal(windSymbol,contract_indic='this&next')
+    sig = IF.get_signal_cffex(windSymbol)
     sig.to_csv(homePath + '/signal.csv',index = None)
+
