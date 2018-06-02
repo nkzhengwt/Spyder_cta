@@ -19,7 +19,7 @@ if __name__=='__main__':
     homePath = 'E:\\Intern\\zxjt\\test10'
     # 设置持仓排名参数，分别代表前n名持仓排名
 #    params = [5,10,20]
-    params =[20]
+    params =[20] # 目前参数功能尚未补全，故只取20作为参数
     # 设置保证金比率
     deposit = 1#0.15
     # 设置佣金比率
@@ -33,8 +33,6 @@ if __name__=='__main__':
     windSymbol = 'IF.CFE'
     # 提取信号
 #    IF = oir(homePath,updatebegin,endDate)
-#    #IF.updateDataFromWind(windSymbol,contract_indic='this&next')
-#    #sig = IF.getSignal(windSymbol,contract_indic='this&next')
 #    temp = IF.get_signal_cffex(windSymbol)
 #    sig = temp[['tradeDate','signal']]
 #    sig.columns = ['tradeDate','signal20']
