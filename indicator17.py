@@ -174,17 +174,17 @@ class Indicators():
         plt.figure()
         plt.subplots_adjust(hspace=1, wspace=1)
 
-        plt.subplot(1,1,1)
+        plt.subplot(3,1,1)
         self.dataframe['asset'+ str(asset_num)].plot(legend = True)
         self.dataframe['cumulative_return'].plot(x=None, y=None, kind='line', ax=None, subplots=False, sharex=None, sharey=False, layout=None, figsize=None, use_index=True, title=None, grid=None, legend=True, style=None, logx=False, logy=False, loglog=False, xticks=None, yticks=None, xlim=None, ylim=None, rot=None, fontsize=None, colormap=None, table=False, yerr=None, xerr=None, secondary_y=False, sort_columns=False)
 
-#        plt.subplot(3,1,2)
-#        f2 = plt.bar(range(len(self.dataframe['transaction'+ str(asset_num)])), self.dataframe['transaction'+ str(asset_num)].tolist(),tick_label= None,label='transaction'+ str(asset_num))
-#        plt.legend((f2,),('transaction'+ str(asset_num),))
-#
-#        plt.subplot(3,1,3)
-#        f3 = plt.bar(range(len(self.dataframe['pnl'+ str(asset_num)])),self.dataframe['pnl'+ str(asset_num)].tolist(),label='pnl'+ str(asset_num))
-#        plt.legend((f3,),('pnl'+ str(asset_num),))
+        plt.subplot(3,1,2)
+        f2 = plt.bar(range(len(self.dataframe['transaction'+ str(asset_num)])), self.dataframe['transaction'+ str(asset_num)].tolist(),tick_label= None,label='transaction'+ str(asset_num))
+        plt.legend((f2,),('transaction'+ str(asset_num),))
+
+        plt.subplot(3,1,3)
+        f3 = plt.bar(range(len(self.dataframe['pnl'+ str(asset_num)])),self.dataframe['pnl'+ str(asset_num)].tolist(),label='pnl'+ str(asset_num))
+        plt.legend((f3,),('pnl'+ str(asset_num),))
 
         plt.show()
 
