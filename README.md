@@ -48,7 +48,8 @@ windSymbol = 'IF.CFE'
 ![](https://github.com/nkuzhengwt/Spyder_cta/blob/New/result.png)
 
 详细回测指标见：write_indicators.csv
-交易记录见：total.csv
+
+交易记录见：total.h5
 # Main Features
 ## 综合
 - 事件驱动 √
