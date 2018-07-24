@@ -23,14 +23,14 @@ class assetcurve(object):
         self.commission = commission
         self.multi = multiplier
         self.params = params
-        signal['tradeDate'] = pd.to_datetime(signal['tradeDate'],format='%Y-%m-%d')
+        signal['tradeDate'] = pd.to_datetime(signal['tradeDate'],format='%Y%m%d')
         self.signal = signal
         self.total = pd.merge(self.signal, self.quo, how='inner', on=None, \
                          left_on='tradeDate', right_on='date')
         self.total['tradeDate'] = self.total['tradeDate'].astype(str)
         self.total['date'] = self.total['date'].astype(str)
         for i in self.params:
-            self.total['asset'+str(i)] = 1000000
+            self.total['asset'+str(i)] = 1
             self.total['transaction'+str(i)] = 0
             self.total['pnl'+str(i)] = 0
             self.total['commission'+str(i)] = 0

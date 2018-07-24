@@ -68,6 +68,8 @@ class Quo():
             try:
                 lastData = pd.read_hdf(self.homePath +  '\\' + \
                                        'quo' + self.suffix,windSymbol)
+                firstDate = str(lastData['date'].iloc[0])
+                firstDate = firstDate[0:4] + firstDate[5:7] + firstDate[8:10]
                 lastDate = str(lastData['date'].iloc[-1])
                 lastDate = lastDate[0:4] + lastDate[5:7] + lastDate[8:10]
                 data = pd.DataFrame()
@@ -82,6 +84,15 @@ class Quo():
                     data['updatingTime'] = t.strftime('%Y-%m-%d %H:%M:%S')
                 else:
                     print('endDate <= lastDate')
+                    data= lastData
+                if beginDate < firstDate:
+                    print('new')
+                    data = getFuturequoByDate(beginDate, \
+                                             min(str(int(firstDate)-1),endDate),windSymbol)
+                    data = pd.concat([data,lastData],ignore_index=True)
+                    data['updatingTime'] = t.strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    print('beginDate >= firstDate')
                     data= lastData
             except:
                 data = getFuturequoByDate(beginDate,endDate,windSymbol)

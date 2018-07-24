@@ -5,6 +5,8 @@ Created on Sun Apr 22 16:26:42 2018
 
 @author: weiss
 
+2018
+
 4.22
 1.增加了近月函数this_contract()
 2.调整了部分语法结构适应合约key
@@ -33,6 +35,9 @@ Created on Sun Apr 22 16:26:42 2018
 5.18
 1.增加中金所爬虫函数以及对应信号函数
 
+7.16
+1.增加中金所爬虫函数的向后更新功能
+2.增加中金所前5、前10的信号，优化输出格式
 """
 
 
@@ -342,10 +347,10 @@ class oir(object):
         con_position = pd.read_hdf(self.homePath+'rank'+self.suffix,windSymbol)
         #强制默认参数为[5,10,20]，否则出错
         sum_position = pd.DataFrame(data = [],index = range(len(con_position)),\
-                       columns = ['tradeDate']+['long_position_increase_5']+\
-                       ['long_position_increase_10']+['long_position_increase_20']+\
-                       ['short_position_increase_5']+['short_position_increase_10']+\
-                       ['short_position_increase_20'])
+                       columns = ['tradeDate']+['long_position_increase5']+\
+                       ['long_position_increase10']+['long_position_increase20']+\
+                       ['short_position_increase5']+['short_position_increase10']+\
+                       ['short_position_increase20'])
         #生成排名数据
         j = 0
         for i in range(len(con_position)):
@@ -363,10 +368,10 @@ class oir(object):
         if contract_indic == 'this&next':
             con_position_next = pd.read_hdf(self.homePath+'rank'+self.suffix,windSymbol+'_next')
             sum_position_next = pd.DataFrame(data = [],index = range(len(con_position_next)),\
-                       columns = ['tradeDate']+['long_position_increase_5']+\
-                       ['long_position_increase_10']+['long_position_increase_20']+\
-                       ['short_position_increase_5']+['short_position_increase_10']+\
-                       ['short_position_increase_20'])
+                       columns = ['tradeDate']+['long_position_increase5']+\
+                       ['long_position_increase10']+['long_position_increase20']+\
+                       ['short_position_increase5']+['short_position_increase10']+\
+                       ['short_position_increase20'])
             #生成排名数据
             j = 0
             for i in range(len(con_position_next)):
@@ -386,9 +391,9 @@ class oir(object):
             sum_position_next = sum_position_next.iloc[0:j]
 
             sum_position = sum_position.merge(sum_position_next,on=['tradeDate'],how='outer')
-            for col in ['long_position_increase_5','long_position_increase_10',
-                        'long_position_increase_20','short_position_increase_5',
-                        'short_position_increase_10','short_position_increase_20']:
+            for col in ['long_position_increase5','long_position_increase10',
+                        'long_position_increase20','short_position_increase5',
+                        'short_position_increase10','short_position_increase20']:
                 sum_position[col+'_y'].fillna(0,inplace=True)
                 sum_position[col] = sum_position[col+'_x']+sum_position[col+'_y']
 
@@ -440,48 +445,88 @@ class oir(object):
                     t = d.find(attr).text
                     temp.append(t)
                 data.append(temp)
+        vol5 = [0,0,0]
+        varvol5 = [0,0,0]
+        vol10 = [0,0,0]
+        varvol10 = [0,0,0]
         vol = [0,0,0]
         varvol = [0,0,0]
         for x in data:
+            if int(x[3])<=10:
+                vol10[int(x[2])] +=int(x[5])
+                varvol10[int(x[2])] += int(x[6])
+                if int(x[3])<=5:
+                    vol5[int(x[2])] +=int(x[5])
+                    varvol5[int(x[2])] += int(x[6])
             vol[int(x[2])] +=int(x[5])
             varvol[int(x[2])] += int(x[6])
-        return(varvol[1],varvol[2])
+        return (varvol5[1],varvol5[2],varvol10[1],varvol10[2],varvol[1],varvol[2])
 
     def get_signal_cffex(self,windSymbol):
         symbol = windSymbol.split('.')[0]
         dateList = pd.DataFrame()
         dateList['tradeDate'] =  self.tradeDateList['tradeDate'].astype(str)
-        tempDateList = dateList[dateList['tradeDate'] >= str(self.beginDate)]
+        try:
+            last_chg = pd.read_csv(self.homePath+symbol+'_chg.csv')
+            first_date = last_chg['tradeDate'].iloc[0]
+            if first_date > self.beginDate:
+                update_idx = 0
+                tempDateList = dateList[dateList['tradeDate'] >= str(self.beginDate)]
+            else:
+                last_date = last_chg['tradeDate'].iloc[-1]
+                print('Last date:', last_date)
+                tempDateList = dateList[dateList['tradeDate'] > str(last_date)]
+                update_idx = 1
+        except:
+            update_idx = 0
+            tempDateList = dateList[dateList['tradeDate'] >= str(self.beginDate)]
         tempDateList = tempDateList[tempDateList['tradeDate'] <=str(self.workDate)]\
                        .reset_index(drop=True)
-        long_chg = []
-        short_chg = []
+        L1, L2, L3, S1, S2, S3 = [], [], [], [], [], []
         for date in tempDateList['tradeDate']:
             print(date)
             try:
-                long_tem, short_tem = self.get_rank_data(date,symbol)
-                long_chg.append(long_tem)
-                short_chg.append(short_tem)
+                l1,s1,l2,s2,l3,s3 = self.get_rank_data(date,symbol)
+                L1.append(l1)
+                L2.append(l2)
+                L3.append(l3)
+                S1.append(s1)
+                S2.append(s2)
+                S3.append(s3)
             except:
-                long_chg.append(0)
-                short_chg.append(0)
+                L1.append(0)
+                L2.append(0)
+                L3.append(0)
+                S1.append(0)
+                S2.append(0)
+                S3.append(0)
         chg_df = pd.DataFrame({'tradeDate':tempDateList['tradeDate'],\
-                               'long':long_chg,'short':short_chg})
+                               'long5':L1,'short5':S1,\
+                               'long10':L2,'short10':S2,\
+                               'long20':L3,'short20':S3,\
+                               })
+        if update_idx == 1:
+            chg_df = pd.concat([last_chg,chg_df])
+        chg_cols = ['tradeDate','long5','long10','long20',\
+                    'short5','short10','short20']
+        chg_df = chg_df[chg_cols]
         chg_df.to_csv(self.homePath+symbol+'_chg.csv',index = None)
         signal = pd.DataFrame()
+        signal_cols = chg_cols+['signal5','signal10','signal20']
         signal['tradeDate'] = chg_df['tradeDate']
-        signal['long'] = chg_df['long']
-        signal['short'] = chg_df['short']
-        signal['signal'] = ((chg_df['long'].apply(np.sign) - chg_df['short'].apply(np.sign))/2).apply(int)
-        return signal
+        for para in ['5','10','20']:
+            signal['long'+para] = chg_df['long'+para]
+            signal['short'+para] = chg_df['short'+para]
+            signal['signal'+para] = ((chg_df['long'+para].apply(np.sign) - \
+                  chg_df['short'+para].apply(np.sign))/2).apply(int)
+        return signal[signal_cols]
 
 
 if __name__=='__main__':
-    homePath = 'E:\\Intern\\zxjt\\test9'
+    homePath = '/Users/weiss/Desktop/zxjt'
     windSymbol = 'IF.CFE'
-    IF = oir(homePath,updatebegin = 20170101,endDate = 20170202)
+    IF = oir(homePath,updatebegin = 20100416,endDate = 20180715)
     #IF.updateDataFromWind(windSymbol,contract_indic='this&next')
     #sig = IF.getSignal(windSymbol,contract_indic='this&next')
     sig = IF.get_signal_cffex(windSymbol)
     sig.to_csv(homePath + '/signal.csv',index = None)
-
